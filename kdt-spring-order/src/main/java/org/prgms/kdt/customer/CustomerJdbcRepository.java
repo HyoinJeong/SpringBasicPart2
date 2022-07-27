@@ -3,6 +3,7 @@ package org.prgms.kdt.customer;
 import org.prgms.kdt.JdbcCustomerRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -24,7 +25,7 @@ public class CustomerJdbcRepository implements CustomerRepository {
     private final DataSource dataSource;
 
     private final JdbcTemplate jdbcTemplate;
-    private static RowMapper<Customer> customerRowMapper=(resultSet, i) -> {
+    private static RowMapper<Customer> customerRowMapper = (resultSet, i) -> {
         var customerName = resultSet.getString("name");
         var email = resultSet.getString("email");
         var customerId = toUUID(resultSet.getBytes("customer_id")); // UUID라서 getBytes
@@ -32,7 +33,8 @@ public class CustomerJdbcRepository implements CustomerRepository {
                 resultSet.getTimestamp("last_login_at").toLocalDateTime() : null;
         var createdAt = resultSet.getTimestamp("created_at").toLocalDateTime();
         return new Customer(customerId, customerName, email, lastLoginAt, createdAt);
-    };;
+    };
+    ;
 
     public CustomerJdbcRepository(DataSource dataSource, JdbcTemplate jdbcTemplate) {
         this.dataSource = dataSource;
@@ -82,6 +84,11 @@ public class CustomerJdbcRepository implements CustomerRepository {
     }
 
     @Override
+    public int count() {
+        return jdbcTemplate.queryForObject("select count(*) from order_mgmt.customers", Integer.class);
+    }
+
+    @Override
     public List<Customer> findAll() {
         return jdbcTemplate.query("select * from order_mgmt.customers", customerRowMapper);
     }
@@ -89,23 +96,14 @@ public class CustomerJdbcRepository implements CustomerRepository {
 
     @Override
     public Optional<Customer> findById(UUID customerId) {
-        List<Customer> allCustomers = new ArrayList<>();
-
-        try (
-                var connection = dataSource.getConnection();
-                var statement = connection.prepareStatement("select * from order_mgmt.customers WHERE customer_id=UUID_TO_BIN(?)");
-        ) {
-            statement.setBytes(1, customerId.toString().getBytes());
-            try (var resultSet = statement.executeQuery()) {
-                while (resultSet.next()) {
-                    mapToCustomer(allCustomers, resultSet);
-                }
-            }
-        } catch (SQLException throwables) {
-            logger.error("Got error while closing connection", throwables);
-            throw new RuntimeException(throwables);
+        try {
+            return Optional.ofNullable(jdbcTemplate.queryForObject("select * from order_mgmt.customers WHERE customer_id=UUID_TO_BIN(?)",
+                    customerRowMapper,
+                    customerId.toString().getBytes()));
+        } catch (EmptyResultDataAccessException e) {
+            logger.error("Got empty result", e);
+            return Optional.empty();
         }
-        return allCustomers.stream().findFirst();
     }
 
     @Override
