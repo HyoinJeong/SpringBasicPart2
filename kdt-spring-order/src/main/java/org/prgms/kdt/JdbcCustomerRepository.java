@@ -30,7 +30,7 @@ public class JdbcCustomerRepository {
             try (var resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {
                     var customerName = resultSet.getString("name");
-                    var customerId = UUID.nameUUIDFromBytes(resultSet.getBytes("customer_id")); // UUID라서 getBytes
+                    var customerId = toUUID(resultSet.getBytes("customer_id")); // UUID라서 getBytes
                     var createdAt = resultSet.getTimestamp("created_at").toLocalDateTime();
 //                    logger.info("customer Id -> {}, name -> {}, createdAt -> {} ", customerId, customerName, createdAt);
                     names.add(customerName);
@@ -51,7 +51,7 @@ public class JdbcCustomerRepository {
         ) {
             while (resultSet.next()) {
                 var customerName = resultSet.getString("name");
-                var customerId = UUID.nameUUIDFromBytes(resultSet.getBytes("customer_id")); // UUID라서 getBytes
+                var customerId = toUUID(resultSet.getBytes("customer_id")); // UUID라서 getBytes
                 var createdAt = resultSet.getTimestamp("created_at").toLocalDateTime();
 //                logger.info("customer Id -> {}, name -> {}, createdAt -> {} ", customerId, customerName, createdAt);
                 names.add(customerName);
