@@ -105,4 +105,21 @@ class CustomerJdbcRepositoryTest {
         assertThat(unknown.isEmpty(), is(true));
     }
 
+    @Test
+    @Order(6)
+    @DisplayName("고객을 수정할 수 있다.")
+    public void testUpdate(){
+        newCustomer.changeName("updated-user");
+        customerJdbcRepository.update(newCustomer);
+
+        var all = customerJdbcRepository.findAll();
+        assertThat(all,hasSize(1));
+        assertThat(all,everyItem(samePropertyValuesAs(newCustomer)));
+
+        var retrievedCustomer=customerJdbcRepository.findById(newCustomer.getCustomerId());
+        assertThat(retrievedCustomer.isEmpty(), is(false));
+        assertThat(retrievedCustomer.get(), samePropertyValuesAs(newCustomer));
+
+    }
+
 }

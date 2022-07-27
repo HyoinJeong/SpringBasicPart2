@@ -36,8 +36,8 @@ public class CustomerJdbcRepository implements CustomerRepository {
             statement.setString(2, customer.getName());
             statement.setString(3, customer.getEmail());
             statement.setTimestamp(4, Timestamp.valueOf(customer.getCreatedAt()));
-            var executeUpdate=statement.executeUpdate();
-            if (executeUpdate!=1){
+            var executeUpdate = statement.executeUpdate();
+            if (executeUpdate != 1) {
                 throw new RuntimeException("Noting was iserted");
             }
             return customer;
@@ -49,8 +49,23 @@ public class CustomerJdbcRepository implements CustomerRepository {
 
     @Override
     public Customer update(Customer customer) {
-
-        return null;
+        try (
+                var connection = dataSource.getConnection();
+                var statement = connection.prepareStatement("update order_mgmt.customers set name = ?, email=?, last_login_at=? where customer_id=UUID_TO_BIN(?)");
+        ) {
+            statement.setString(1, customer.getName());
+            statement.setString(2, customer.getEmail());
+            statement.setTimestamp(3, customer.getLastLoginAt() != null ? Timestamp.valueOf(customer.getLastLoginAt()) : null);
+            statement.setBytes(4, customer.getCustomerId().toString().getBytes());
+            var executeUpdate = statement.executeUpdate();
+            if (executeUpdate != 1) {
+                throw new RuntimeException("Noting was updated");
+            }
+            return customer;
+        } catch (SQLException throwables) {
+            logger.error("Got error while closing connection", throwables);
+            throw new RuntimeException(throwables);
+        }
     }
 
     @Override
@@ -78,7 +93,7 @@ public class CustomerJdbcRepository implements CustomerRepository {
         List<Customer> allCustomers = new ArrayList<>();
 
         try (
-                var connection =dataSource.getConnection();
+                var connection = dataSource.getConnection();
                 var statement = connection.prepareStatement("select * from order_mgmt.customers WHERE customer_id=UUID_TO_BIN(?)");
         ) {
             statement.setBytes(1, customerId.toString().getBytes());
@@ -99,7 +114,7 @@ public class CustomerJdbcRepository implements CustomerRepository {
         List<Customer> allCustomers = new ArrayList<>();
 
         try (
-                var connection =dataSource.getConnection();
+                var connection = dataSource.getConnection();
                 var statement = connection.prepareStatement("select * from order_mgmt.customers WHERE name=?");
         ) {
             statement.setString(1, name);
@@ -120,7 +135,7 @@ public class CustomerJdbcRepository implements CustomerRepository {
         List<Customer> allCustomers = new ArrayList<>();
 
         try (
-                var connection =dataSource.getConnection();
+                var connection = dataSource.getConnection();
                 var statement = connection.prepareStatement("select * from order_mgmt.customers WHERE email=?");
         ) {
             statement.setString(1, email);
@@ -159,8 +174,8 @@ public class CustomerJdbcRepository implements CustomerRepository {
         allCustomers.add(new Customer(customerId, customerName, email, lastLoginAt, createdAt));
     }
 
-    static UUID toUUID(byte[] bytes){
-        var byteBuffer= ByteBuffer.wrap(bytes);
+    static UUID toUUID(byte[] bytes) {
+        var byteBuffer = ByteBuffer.wrap(bytes);
         return new UUID(byteBuffer.getLong(), byteBuffer.getLong());
     }
 }
