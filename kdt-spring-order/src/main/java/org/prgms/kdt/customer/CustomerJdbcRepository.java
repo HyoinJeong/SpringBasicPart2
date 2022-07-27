@@ -3,11 +3,12 @@ package org.prgms.kdt.customer;
 import org.prgms.kdt.JdbcCustomerRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
 import java.nio.ByteBuffer;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -22,8 +23,20 @@ public class CustomerJdbcRepository implements CustomerRepository {
 
     private final DataSource dataSource;
 
-    public CustomerJdbcRepository(DataSource dataSource) {
+    private final JdbcTemplate jdbcTemplate;
+    private static RowMapper<Customer> customerRowMapper=(resultSet, i) -> {
+        var customerName = resultSet.getString("name");
+        var email = resultSet.getString("email");
+        var customerId = toUUID(resultSet.getBytes("customer_id")); // UUID라서 getBytes
+        var lastLoginAt = resultSet.getTimestamp("last_login_at") != null ?
+                resultSet.getTimestamp("last_login_at").toLocalDateTime() : null;
+        var createdAt = resultSet.getTimestamp("created_at").toLocalDateTime();
+        return new Customer(customerId, customerName, email, lastLoginAt, createdAt);
+    };;
+
+    public CustomerJdbcRepository(DataSource dataSource, JdbcTemplate jdbcTemplate) {
         this.dataSource = dataSource;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Override
@@ -70,21 +83,7 @@ public class CustomerJdbcRepository implements CustomerRepository {
 
     @Override
     public List<Customer> findAll() {
-        List<Customer> allCustomers = new ArrayList<>();
-        try (
-                var connection = dataSource.getConnection();
-                var statement = connection.prepareStatement("select * from order_mgmt.customers");
-                var resultSet = statement.executeQuery();
-        ) {
-            while (resultSet.next()) {
-                mapToCustomer(allCustomers, resultSet);
-            }
-
-        } catch (SQLException throwables) {
-            logger.error("Got error while closing connection", throwables);
-            throw new RuntimeException(throwables);
-        }
-        return allCustomers;
+        return jdbcTemplate.query("select * from order_mgmt.customers", customerRowMapper);
     }
 
 
