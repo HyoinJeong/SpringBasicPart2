@@ -43,7 +43,7 @@ public class CustomerJdbcRepository implements CustomerRepository {
 
     @Override
     public Customer insert(Customer customer) {
-        var update=jdbcTemplate.update("insert into order_mgmt.customers(customer_id, name, email, created_at) VALUES (UUID_TO_BIN(?), ?, ?,?)",
+        var update = jdbcTemplate.update("INSERT INTO order_mgmt.customers(customer_id, name, email, created_at) VALUES (UNHEX(REPLACE(?, '-', '')), ?, ?, ?)",
                 customer.getCustomerId().toString().getBytes(),
                 customer.getName(),
                 customer.getEmail(),
@@ -56,8 +56,7 @@ public class CustomerJdbcRepository implements CustomerRepository {
 
     @Override
     public Customer update(Customer customer) {
-        var update=jdbcTemplate.update("update order_mgmt.customers set name = ?, email=?, last_login_at=? where customer_id=UUID_TO_BIN(?)",
-                customer.getName(),
+        var update = jdbcTemplate.update("UPDATE order_mgmt.customers SET name = ?, email = ?, last_login_at = ?  WHERE customer_id = UNHEX(REPLACE(?, '-', ''))",                customer.getName(),
                 customer.getEmail(),
                 customer.getLastLoginAt() != null ? Timestamp.valueOf(customer.getLastLoginAt()) : null,
                 customer.getCustomerId().toString().getBytes());
@@ -81,7 +80,7 @@ public class CustomerJdbcRepository implements CustomerRepository {
     @Override
     public Optional<Customer> findById(UUID customerId) {
         try {
-            return Optional.ofNullable(jdbcTemplate.queryForObject("select * from order_mgmt.customers WHERE customer_id=UUID_TO_BIN(?)",
+            return Optional.ofNullable(jdbcTemplate.queryForObject("select * from order_mgmt.customers WHERE customer_id = UNHEX(REPLACE(?, '-', ''))",
                     customerRowMapper,
                     customerId.toString().getBytes()));
         } catch (EmptyResultDataAccessException e) {
