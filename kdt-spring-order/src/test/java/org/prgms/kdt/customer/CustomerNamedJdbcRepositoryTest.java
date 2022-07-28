@@ -3,11 +3,14 @@ package org.prgms.kdt.customer;
 import com.wix.mysql.EmbeddedMysql;
 import com.zaxxer.hikari.HikariDataSource;
 import org.junit.jupiter.api.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.BadSqlGrammarException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
@@ -29,6 +32,8 @@ import static org.hamcrest.Matchers.*;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class CustomerNamedJdbcRepositoryTest {
+    private static final Logger logger = LoggerFactory.getLogger(CustomerNamedJdbcRepositoryTest.class);
+
     @Configuration
     @ComponentScan(basePackages = {"org.prgms.kdt.customer"})
     static class Config{
@@ -97,7 +102,11 @@ class CustomerNamedJdbcRepositoryTest {
     @Order(2)
     @DisplayName("고객을 추가할 수 있다.")
     public void testInsert() {
-        customerNamedJdbcRepository.insert(newCustomer);
+        try {
+            customerNamedJdbcRepository.insert(newCustomer);
+        }catch (BadSqlGrammarException e){
+            logger.error("Got BadSqlGrammarException error code -> {}",e.getSQLException().getErrorCode(),e);
+        }
 
         var retrievedCustomer = customerNamedJdbcRepository.findById(newCustomer.getCustomerId());
         assertThat(retrievedCustomer.isEmpty(), is(false));
