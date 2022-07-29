@@ -7,10 +7,12 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.DefaultTransactionDefinition;
+import org.springframework.transaction.support.TransactionCallbackWithoutResult;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
@@ -22,7 +24,8 @@ public class CustomerNamedJdbcRepository implements CustomerRepository {
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
-    private final PlatformTransactionManager transactionManager;
+
+    private final TransactionTemplate transactionTemplate;
 
     private static RowMapper<Customer> customerRowMapper = (resultSet, i) -> {
         var customerName = resultSet.getString("name");
@@ -35,9 +38,9 @@ public class CustomerNamedJdbcRepository implements CustomerRepository {
     };
     ;
 
-    public CustomerNamedJdbcRepository(NamedParameterJdbcTemplate jdbcTemplate, PlatformTransactionManager dataSourceTransactionManager) {
+    public CustomerNamedJdbcRepository(NamedParameterJdbcTemplate jdbcTemplate, TransactionTemplate transactionTemplate) {
         this.jdbcTemplate = jdbcTemplate;
-        this.transactionManager = dataSourceTransactionManager;
+        this.transactionTemplate = transactionTemplate;
     }
 
     private Map<String,Object> toParamMap(Customer customer){
@@ -118,15 +121,13 @@ public class CustomerNamedJdbcRepository implements CustomerRepository {
     }
 
     public void testTransaction(Customer customer){
-        var transaction=transactionManager.getTransaction(new DefaultTransactionDefinition());
-        try {
-            jdbcTemplate.update("update order_mgmt.customers set name =:name where customer_id=UNHEX(REPLACE(:customerId, '-', ''))",toParamMap(customer));
-            jdbcTemplate.update("update order_mgmt.customers set email =:email where customer_id=UNHEX(REPLACE(:customerId, '-', ''))",toParamMap(customer));
-            transactionManager.commit(transaction);
-        }catch (DataAccessException e){
-            logger.error("Got error", e);
-            transactionManager.rollback(transaction);
-        }
+        transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+            @Override
+            protected void doInTransactionWithoutResult(TransactionStatus status) {
+                jdbcTemplate.update("update order_mgmt.customers set name =:name where customer_id=UNHEX(REPLACE(:customerId, '-', ''))",toParamMap(customer));
+                jdbcTemplate.update("update order_mgmt.customers set email =:email where customer_id=UNHEX(REPLACE(:customerId, '-', ''))",toParamMap(customer));
+            }
+        });
     }
 
     @Override
