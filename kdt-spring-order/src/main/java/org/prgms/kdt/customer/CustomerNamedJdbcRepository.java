@@ -25,8 +25,6 @@ public class CustomerNamedJdbcRepository implements CustomerRepository {
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
 
-    private final TransactionTemplate transactionTemplate;
-
     private static RowMapper<Customer> customerRowMapper = (resultSet, i) -> {
         var customerName = resultSet.getString("name");
         var email = resultSet.getString("email");
@@ -38,9 +36,8 @@ public class CustomerNamedJdbcRepository implements CustomerRepository {
     };
     ;
 
-    public CustomerNamedJdbcRepository(NamedParameterJdbcTemplate jdbcTemplate, TransactionTemplate transactionTemplate) {
+    public CustomerNamedJdbcRepository(NamedParameterJdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
-        this.transactionTemplate = transactionTemplate;
     }
 
     private Map<String,Object> toParamMap(Customer customer){
@@ -120,15 +117,15 @@ public class CustomerNamedJdbcRepository implements CustomerRepository {
         }
     }
 
-    public void testTransaction(Customer customer){
-        transactionTemplate.execute(new TransactionCallbackWithoutResult() {
-            @Override
-            protected void doInTransactionWithoutResult(TransactionStatus status) {
-                jdbcTemplate.update("update order_mgmt.customers set name =:name where customer_id=UNHEX(REPLACE(:customerId, '-', ''))",toParamMap(customer));
-                jdbcTemplate.update("update order_mgmt.customers set email =:email where customer_id=UNHEX(REPLACE(:customerId, '-', ''))",toParamMap(customer));
-            }
-        });
-    }
+//    public void testTransaction(Customer customer){
+//        transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+//            @Override
+//            protected void doInTransactionWithoutResult(TransactionStatus status) {
+//                jdbcTemplate.update("update order_mgmt.customers set name =:name where customer_id=UNHEX(REPLACE(:customerId, '-', ''))",toParamMap(customer));
+//                jdbcTemplate.update("update order_mgmt.customers set email =:email where customer_id=UNHEX(REPLACE(:customerId, '-', ''))",toParamMap(customer));
+//            }
+//        });
+//    }
 
     @Override
     public void deleteAll() {
