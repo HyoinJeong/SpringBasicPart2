@@ -25,4 +25,12 @@ public class FixedAmountVoucher implements Voucher {
         var discountAmount = beforeDiscount - amount;
         return (discountAmount < 0) ? 0 : discountAmount;
     }
+
+    @Override
+    public String toString() {
+        return "FixedAmountVoucher{" +
+                "voucherId=" + voucherId +
+                ", amount=" + amount +
+                '}';
+    }
 }
