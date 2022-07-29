@@ -41,19 +41,12 @@ public class AopTests {
     @Autowired
     VoucherRepository voucherRepository;
 
-//    @Autowired
-//    VoucherService voucherService;
 
     @Test
     @DisplayName("Aop test")
     public void testOrderService(){
         var fixedAmountVoucher = new FixedAmountVoucher(UUID.randomUUID(), 100);
         voucherRepository.insert(fixedAmountVoucher);
-
-//        voucherService.getVoucher(fixedAmountVoucher.getVoucherId());
-
-        VoucherService voucherService = new VoucherService(voucherRepository);
-        voucherService.getVoucher(fixedAmountVoucher.getVoucherId());
 
     }
 }
