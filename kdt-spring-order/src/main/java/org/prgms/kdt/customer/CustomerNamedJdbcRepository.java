@@ -3,13 +3,15 @@ package org.prgms.kdt.customer;
 import org.prgms.kdt.JdbcCustomerRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.DefaultTransactionDefinition;
 
-import javax.sql.DataSource;
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
 import java.util.*;
@@ -19,6 +21,9 @@ public class CustomerNamedJdbcRepository implements CustomerRepository {
     private static final Logger logger = LoggerFactory.getLogger(JdbcCustomerRepository.class);
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
+
+    private final PlatformTransactionManager transactionManager;
+
     private static RowMapper<Customer> customerRowMapper = (resultSet, i) -> {
         var customerName = resultSet.getString("name");
         var email = resultSet.getString("email");
@@ -30,8 +35,9 @@ public class CustomerNamedJdbcRepository implements CustomerRepository {
     };
     ;
 
-    public CustomerNamedJdbcRepository(NamedParameterJdbcTemplate jdbcTemplate) {
+    public CustomerNamedJdbcRepository(NamedParameterJdbcTemplate jdbcTemplate, PlatformTransactionManager dataSourceTransactionManager) {
         this.jdbcTemplate = jdbcTemplate;
+        this.transactionManager = dataSourceTransactionManager;
     }
 
     private Map<String,Object> toParamMap(Customer customer){
@@ -108,6 +114,18 @@ public class CustomerNamedJdbcRepository implements CustomerRepository {
         } catch (EmptyResultDataAccessException e) {
             logger.error("Got empty result", e);
             return Optional.empty();
+        }
+    }
+
+    public void testTransaction(Customer customer){
+        var transaction=transactionManager.getTransaction(new DefaultTransactionDefinition());
+        try {
+            jdbcTemplate.update("update order_mgmt.customers set name =:name where customer_id=UNHEX(REPLACE(:customerId, '-', ''))",toParamMap(customer));
+            jdbcTemplate.update("update order_mgmt.customers set email =:email where customer_id=UNHEX(REPLACE(:customerId, '-', ''))",toParamMap(customer));
+            transactionManager.commit(transaction);
+        }catch (DataAccessException e){
+            logger.error("Got error", e);
+            transactionManager.rollback(transaction);
         }
     }
 

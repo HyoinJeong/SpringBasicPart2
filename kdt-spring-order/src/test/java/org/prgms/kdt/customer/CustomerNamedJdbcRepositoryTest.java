@@ -13,7 +13,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.BadSqlGrammarException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
 import java.time.LocalDateTime;
@@ -59,6 +61,11 @@ class CustomerNamedJdbcRepositoryTest {
         @Bean
         public NamedParameterJdbcTemplate namedParameterJdbcTemplate(JdbcTemplate jdbcTemplate){
             return new NamedParameterJdbcTemplate(jdbcTemplate);
+        }
+
+        @Bean
+        public PlatformTransactionManager platformTransactionManager(DataSource dataSource){
+            return new DataSourceTransactionManager(dataSource);
         }
     }
 
@@ -160,5 +167,29 @@ class CustomerNamedJdbcRepositoryTest {
         assertThat(retrievedCustomer.get(), samePropertyValuesAs(newCustomer));
 
     }
+
+    @Test
+    @Order(7)
+    @DisplayName("트랜잭션 테스트")
+    public void testTransaction(){
+        var prevOne= customerNamedJdbcRepository.findById(newCustomer.getCustomerId());
+        assertThat(prevOne.isEmpty(), is(false));
+
+        var newOne = new Customer(UUID.randomUUID(),"a","a@gmail.com", LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+        var insertedNewOne = customerNamedJdbcRepository.insert(newOne);
+
+        customerNamedJdbcRepository.testTransaction(
+                new Customer(insertedNewOne.getCustomerId(),
+                        "b",
+                        prevOne.get().getEmail(),
+                        newOne.getCreatedAt()));
+
+        var maybeNewOne=customerNamedJdbcRepository.findById(insertedNewOne.getCustomerId());
+        assertThat(maybeNewOne.isEmpty(), is(false));
+        assertThat(maybeNewOne.get(),samePropertyValuesAs(newOne));
+
+
+    }
+
 
 }
